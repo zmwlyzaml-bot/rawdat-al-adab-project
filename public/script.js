@@ -4,6 +4,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const literaryText = document.getElementById('literary-text');
     const visitorCountElement = document.getElementById('visitor-count');
 
+    const FALLBACK_TEXTS = [
+        "أَلا لَيتَ شِعري هَل أَبيتَنَّ لَيلَةً.. بِجَنبِ الغَضا تُزجي القِلاصَ النَواجِيا",
+        "وَمَا نَيْلُ الْمَطَالِبِ بِالتَّمَنِّي.. وَلَكِنْ تُؤْخَذُ الدُّنْيَا غِلَابَا",
+        "إِذا رَأَيْتَ نُيُوبَ اللَّيْثِ بارِزَةً.. فَلا تَظُنَّنَّ أَنَّ اللَّيْثَ يَبْتَسِمُ",
+        "عَلى قَدْرِ أَهْلِ الْعَزْمِ تَأْتِي الْعَزائِمُ.. وَتَأْتِي عَلى قَدْرِ الْكِرامِ الْمَكارِمُ",
+        "وَمَنْ يَتَهَيَّبْ صُعُودَ الجِبَالِ.. يَعِشْ أَبَدَ الدَّهْرِ بَيْنَ الحُفَرِ"
+    ];
+
     // --- إدارة الوضع الليلي/النهاري ---
     const currentTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', currentTheme);
@@ -12,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
     themeToggle.addEventListener('click', () => {
         let theme = document.documentElement.getAttribute('data-theme');
         let newTheme = theme === 'light' ? 'dark' : 'light';
-        
         document.documentElement.setAttribute('data-theme', newTheme);
         localStorage.setItem('theme', newTheme);
         updateThemeIcon(newTheme);
@@ -28,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- جلب النصوص الأدبية مباشرة من تليجرام (نسخة GitHub Pages) ---
+    // --- جلب النصوص الأدبية ---
     const CHANNELS = ['Rawwda', 'QQ_Y8I', 'gazl30', 'for47sev'];
 
     function cleanText(text) {
@@ -44,36 +51,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchFromTelegram() {
         let allTexts = [];
+        literaryText.innerText = "جاري استحضار النصوص الأدبية...";
+        
         try {
+            // محاولة الجلب من تليجرام عبر وكيل
             for (const channel of CHANNELS) {
-                // استخدام خدمة وكيل (Proxy) لتجاوز قيود CORS عند الجلب من المتصفح
-                const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://t.me/s/${channel}`)}`);
-                const data = await response.json();
-                const html = data.contents;
-                
-                const regex = /<div class="tgme_widget_message_text[^>]*>([\s\S]*?)<\/div>/g;
-                let match;
-                while ((match = regex.exec(html)) !== null) {
-                    let rawText = match[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
-                    const cleaned = cleanText(rawText);
-                    if (cleaned) allTexts.push(cleaned);
-                }
+                try {
+                    const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://t.me/s/${channel}`)}`);
+                    const data = await response.json();
+                    const html = data.contents;
+                    const regex = /<div class="tgme_widget_message_text[^>]*>([\s\S]*?)<\/div>/g;
+                    let match;
+                    while ((match = regex.exec(html)) !== null) {
+                        let rawText = match[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
+                        const cleaned = cleanText(rawText);
+                        if (cleaned) allTexts.push(cleaned);
+                    }
+                } catch (e) { console.error(e); }
             }
             
             if (allTexts.length > 0) {
                 const randomIndex = Math.floor(Math.random() * allTexts.length);
                 literaryText.innerText = allTexts[randomIndex];
             } else {
-                literaryText.innerText = "لا توجد نصوص متاحة حالياً.";
+                showFallback();
             }
         } catch (error) {
-            literaryText.innerText = "حدث خطأ أثناء تحميل النصوص.";
+            showFallback();
         }
     }
 
-    // --- محاكاة عداد الزوار (لأن GitHub Pages ثابتة) ---
+    function showFallback() {
+        const randomIndex = Math.floor(Math.random() * FALLBACK_TEXTS.length);
+        literaryText.innerText = FALLBACK_TEXTS[randomIndex];
+    }
+
     function updateVisitorCount() {
-        let count = localStorage.getItem('visitor_count') || Math.floor(Math.random() * 100) + 50;
+        let count = localStorage.getItem('visitor_count') || Math.floor(Math.random() * 100) + 200;
         count = parseInt(count) + 1;
         localStorage.setItem('visitor_count', count);
         visitorCountElement.innerText = count;
